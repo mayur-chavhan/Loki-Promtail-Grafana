@@ -1,0 +1,118 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  #  filename: /data/promtail/positions.yaml
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+    external_labels:
+      source: homebox
+
+scrape_configs:
+  - job_name: system
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: varlogs
+          __path__: /var/log/*.log
+
+  - job_name: all-logs
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: varlogs
+          __path__: /var/log/*log
+
+  - job_name: access
+    static_configs:
+      - labels:
+          job: access_log
+          __path__: /home/*/*/nginx/access*
+    pipeline_stages:
+      - regex:
+          expression: >-
+            ^(?P<ip>.*?) (?P<remote_log_name>.*?)
+            (?P<userid>.*?) \[(?P<date>.*?) (?P<timezone>.*?)\]
+            \"(?P<request_method>.*?) (?P<path>.*?)
+            (?P<request_version>HTTP/.*)?\" (?P<status>.*?)
+            (?P<length>.*?) \"(?P<referrer>.*?)\"
+            \"(?P<user_agent>.*?)\" (?P<session_id>.*?)
+            response-time=(?P<response_time>.*)
+      - labels:
+          ip:
+          userid:
+          date:
+          timezone:
+          request_method:
+          path:
+          request_version:
+          status:
+          length:
+          referrer:
+          user_agent:
+
+  - job_name: nginx
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          app: nginx
+          env: production
+          host: homebox
+          __path__: /home/*/*/nginx/*
+    pipeline_stages:
+      - match:
+          selector: '{app="nginx"}'
+          stages:
+            - regex:
+                # logline example: 127.0.0.1 - - [21/Apr/2020:13:59:45 +0000] "GET /?foo=bar HTTP/1.1" 200 612 "http://example.com/lekkebot.html" "curl/7.58.0"
+                expression: '^(?P<host>[\w\.]+) - (?P<user>[^ ]*) \[(?P<timestamp>.*)\] "(?P<method>[^ ]*) (?P<request_url>[^ ]*) (?P<request_http_protocol>[^ ]*)" (?P<status>[\d]+) (?P<bytes_out>[\d]+) "(?P<http_referer>[^"]*)" "(?P<user_agent>[^"]*)"?'
+            - labels:
+                host:
+                method:
+                request_url:
+                status:
+                user_agent:
+
+  - job_name: journal
+    journal:
+      max_age: 1h
+      path: /var/log/journal
+      labels:
+        job: systemd
+        env: production
+    relabel_configs:
+      - source_labels: ["__journal__systemd_unit"]
+        target_label: "unit"
+
+  - job_name: containers
+    #    entry_parser: raw
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: containerlogs
+          cluster: multipass-cluster
+          __path__: /var/lib/docker/containers/*/*log
+
+    # --log-opt tag="{{.Name}}"
+    pipeline_stages:
+      - json:
+          expressions:
+            stream: stream
+            attrs: attrs
+            tag: attrs.tag
+
+      - regex:
+          expression: (?P<container_name>(?:[^|]*[^|]))
+          source: "tag"
+
+      - labels:
+          #tag:
+          stream:
+          container_name:

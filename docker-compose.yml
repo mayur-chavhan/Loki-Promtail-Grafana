@@ -1,0 +1,41 @@
+version: '3.9'
+
+networks:
+  grafana_loki:
+
+
+services:
+  loki:
+    container_name: loki
+    image: grafana/loki:2.5.0
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./loki-data:/etc/loki
+    command: -config.file=/etc/loki/loki-config.yaml
+    networks:
+      - grafana_loki
+
+  promtail:
+    container_name: promtail
+    image: grafana/promtail:2.5.0
+    volumes:
+      - /var/log:/var/log
+      - ./promtail-data:/etc/promtail
+    command: -config.file=/etc/promtail/promtail-config.yaml
+    networks:
+      - grafana_loki
+
+  grafana:
+    container_name: grafana
+    image: grafana/grafana:latest
+    ports:
+      - 3000:3000
+    restart: unless-stopped
+    volumes:
+      - ./grafana-data:/var/lib/grafana
+      # - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards
+      # - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
+    user: '1000'
+    networks:
+      - grafana_loki
