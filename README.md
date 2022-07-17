@@ -13,7 +13,7 @@ cd Loki-Promtail-Grafana
 docker-compose up -d
 ```
 
-# Add Promtail agents on remote server.
+# Add Promtail agent on remote server for Loki Server.
 
 Install promtail binary or docker-compose file and update promtail config file for remote Loki server IP and restart promtail service.
 
