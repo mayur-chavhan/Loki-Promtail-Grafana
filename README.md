@@ -21,5 +21,5 @@ promtail-config.yaml
 
 ```
 clients:
-  - url: http://repalce_remote_server_ip_here:3100/loki/api/v1/push
+  - url: http://replace_remote_server_ip_here:3100/loki/api/v1/push
 ```
