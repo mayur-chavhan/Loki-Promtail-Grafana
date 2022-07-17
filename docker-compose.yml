@@ -21,6 +21,7 @@ services:
     image: grafana/promtail:2.6.0
     volumes:
       - /var/log:/var/log
+ #     - /home:/home:ro  # optional - add host mount path to container
       - ./promtail-data:/etc/promtail
     command: -config.file=/etc/promtail/promtail-config.yaml
     networks:
@@ -36,6 +37,8 @@ services:
       - ./grafana-data:/var/lib/grafana
       # - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards
       # - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
-    user: '1000'
+#    user: '1000'
     networks:
       - grafana_loki
+
+#    network_mode: "host" #optional when you want container to be on host
